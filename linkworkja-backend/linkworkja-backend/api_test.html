@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkWorkJA API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 LinkWorkJA Backend API Test</h1>
+        <p class="info">This page helps you test the backend API from your browser.</p>
+
+        <div class="test-section">
+            <h3>1. Basic Connectivity Test</h3>
+            <button onclick="testBasicEndpoints()">Test Basic Endpoints</button>
+            <div id="basic-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Authentication Test</h3>
+            <div>
+                <h4>Register New User</h4>
+                <input type="email" id="reg-email" placeholder="Email" value="test@example.com">
+                <input type="password" id="reg-password" placeholder="Password" value="password123">
+                <input type="text" id="reg-name" placeholder="Full Name" value="Test User">
+                <input type="text" id="reg-parish" placeholder="Parish" value="Kingston">
+                <select id="reg-role">
+                    <option value="job_seeker">Job Seeker</option>
+                    <option value="business">Business</option>
+                    <option value="government">Government</option>
+                </select>
+                <button onclick="testRegister()">Register</button>
+            </div>
+            <div>
+                <h4>Login</h4>
+                <input type="email" id="login-email" placeholder="Email" value="test@example.com">
+                <input type="password" id="login-password" placeholder="Password" value="password123">
+                <button onclick="testLogin()">Login</button>
+            </div>
+            <div id="auth-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Jobs API Test</h3>
+            <button onclick="testGetJobs()">Get Jobs</button>
+            <div id="jobs-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Gigs API Test</h3>
+            <button onclick="testGetGigs()">Get Available Gigs</button>
+            <div id="gigs-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. CORS Test</h3>
+            <button onclick="testCORS()">Test CORS Headers</button>
+            <div id="cors-results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let authToken = localStorage.getItem('authToken');
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            element.innerHTML += `<div class="${className}">${message}</div>`;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function testBasicEndpoints() {
+            clearLog('basic-results');
+            log('basic-results', 'Testing basic endpoints...', 'info');
+
+            try {
+                // Test root endpoint
+                const rootResponse = await fetch(`${API_BASE}/`);
+                const rootData = await rootResponse.json();
+                log('basic-results', `✅ Root endpoint: ${rootResponse.status} - ${rootData.message}`, 'success');
+
+                // Test health endpoint
+                const healthResponse = await fetch(`${API_BASE}/health`);
+                const healthData = await healthResponse.json();
+                log('basic-results', `✅ Health endpoint: ${healthResponse.status} - ${healthData.status}`, 'success');
+
+                // Test docs endpoint
+                const docsResponse = await fetch(`${API_BASE}/docs`);
+                log('basic-results', `✅ API Docs: ${docsResponse.status} - Available at ${API_BASE}/docs`, 'success');
+
+            } catch (error) {
+                log('basic-results', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRegister() {
+            clearLog('auth-results');
+            log('auth-results', 'Testing user registration...', 'info');
+
+            const userData = {
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                full_name: document.getElementById('reg-name').value,
+                parish: document.getElementById('reg-parish').value,
+                role: document.getElementById('reg-role').value,
+                skills: ['JavaScript', 'React']
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('auth-results', `✅ Registration successful! User ID: ${data.id}`, 'success');
+                    log('auth-results', `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    const error = await response.text();
+                    log('auth-results', `❌ Registration failed: ${response.status} - ${error}`, 'error');
+                }
+            } catch (error) {
+                log('auth-results', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            clearLog('auth-results');
+            log('auth-results', 'Testing user login...', 'info');
+
+            const loginData = new URLSearchParams({
+                username: document.getElementById('login-email').value,
+                password: document.getElementById('login-password').value
+            });
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: loginData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    localStorage.setItem('authToken', authToken);
+                    log('auth-results', `✅ Login successful! Token saved.`, 'success');
+                    log('auth-results', `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    const error = await response.text();
+                    log('auth-results', `❌ Login failed: ${response.status} - ${error}`, 'error');
+                }
+            } catch (error) {
+                log('auth-results', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetJobs() {
+            clearLog('jobs-results');
+            log('jobs-results', 'Testing jobs endpoint...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/jobs/`);
+                if (response.ok) {
+                    const data = await response.json();
+                    log('jobs-results', `✅ Jobs endpoint: ${response.status}`, 'success');
+                    log('jobs-results', `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    const error = await response.text();
+                    log('jobs-results', `❌ Jobs endpoint failed: ${response.status} - ${error}`, 'error');
+                }
+            } catch (error) {
+                log('jobs-results', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetGigs() {
+            clearLog('gigs-results');
+            log('gigs-results', 'Testing gigs endpoint...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/gigs/available`);
+                if (response.ok) {
+                    const data = await response.json();
+                    log('gigs-results', `✅ Gigs endpoint: ${response.status}`, 'success');
+                    log('gigs-results', `<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    const error = await response.text();
+                    log('gigs-results', `❌ Gigs endpoint failed: ${response.status} - ${error}`, 'error');
+                }
+            } catch (error) {
+                log('gigs-results', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            clearLog('cors-results');
+            log('cors-results', 'Testing CORS configuration...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:3000',
+                        'Access-Control-Request-Method': 'GET'
+                    }
+                });
+
+                log('cors-results', `✅ CORS preflight: ${response.status}`, 'success');
+                
+                const corsHeaders = {};
+                for (const [key, value] of response.headers.entries()) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        corsHeaders[key] = value;
+                    }
+                }
+                
+                if (Object.keys(corsHeaders).length > 0) {
+                    log('cors-results', `<pre>CORS Headers: ${JSON.stringify(corsHeaders, null, 2)}</pre>`, 'info');
+                }
+
+            } catch (error) {
+                log('cors-results', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-test basic endpoints on page load
+        window.onload = function() {
+            testBasicEndpoints();
+        };
+    </script>
+</body>
+</html>
+
